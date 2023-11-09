@@ -1,0 +1,52 @@
+version: "3.8"
+   
+services:
+    django:
+        build: .
+        container_name: django
+        restart: always
+        command: python manage.py runserver 0.0.0.0:8000
+        volumes:
+            - .:/app/
+        ports:
+            - "8000:8000"
+        environment:
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
+        depends_on:
+            - msdb
+            - redis
+    celery:
+        build: .
+        command: celery -A MailMaster.celery worker --pool=solo -l info
+        restart: always
+        volumes:
+            - .:/app
+        environment:
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
+        depends_on:
+            - django
+            - redis
+    msdb:
+        image: mysql
+        container_name: msdb
+        restart: unless-stopped
+        environment:
+            - MYSQL_DATABASE=mailmaster
+            - MYSQL_USER=root
+            - MYSQL_ROOT_PASSWORD=7592978136
+            - MYSQL_PASSWORD=7592978136
+        expose:
+            - 3306
+        volumes:
+            - msdata:/var/lib/mysql/data/
+    redis:
+        image: "redis:alpine"
+        
+volumes:
+    msdata:

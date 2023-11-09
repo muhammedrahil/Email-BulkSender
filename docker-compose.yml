@@ -1,0 +1,40 @@
+version: "3"
+   
+services:
+    django:
+        build: .
+        container_name: django
+        command: python manage.py runserver 0.0.0.0:8000
+        volumes:
+            - .:/app/
+        ports:
+            - "8000:8000"
+        environment:
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
+        depends_on:
+            - redis
+    celery:
+        build: .
+        container_name: celery
+        command: celery -A MailMaster.celery worker --pool=solo -l info
+        volumes:
+            - .:/app
+        environment:
+            - DEBUG=1
+            - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
+        depends_on:
+            - django
+            - redis
+    redis:
+        container_name: redis
+        restart: unless-stopped
+        image: "redis:alpine"
+        expose:
+            - 6379
+        
+
